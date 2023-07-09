@@ -1,7 +1,7 @@
 #include "p_sys.h"
 
 /* 
-   intialize threadpool
+   intialize threadpool.
  */
 void threadpool_init(ThreadPool* pool, int threads_num) {
   int i;
