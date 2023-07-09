@@ -18,7 +18,7 @@ void start_server(int port) {
 }
 
 /*
-  hanle every connection of client request.
+  hanle every connection of client request
 */
 void handle_conn(int sockfd) {
   struct sockaddr_in connaddr;
