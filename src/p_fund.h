@@ -15,11 +15,11 @@
 //#include "p_http.h"
 
 #endif // P_SYS_H
-void start_server(int port);
+void start_server(int port,int threads_num, int threads_queue_size); 
 
 void handle_conn(int sockfd);
 
-void handle_request(int connfd);
+void handle_request(void * argument);
 
 
 void get_info_from_conn(int connfd,  http_request *hr,char *req);

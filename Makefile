@@ -19,13 +19,13 @@ all:CHECK_DIR $(CGI_FILES) BUILD
 
 cgi/%.cgi: $(CGI_DIR)/%.c
 	@echo "CGI BUILD"
-	$(CC) ./$(SRC_DIR)/p_*.c $< -o $@
+	$(CC) ./$(SRC_DIR)/p_*.c $< -o $@ -lpthread
 	ls cgi
 	@echo "CGI DOWN"
 
 # 目前只能这样写，有点不会
 BUILD: 
-	$(CC) ./$(SRC_DIR)/*.c -o ./$(BIN_DIR)/$(BIN)
+	$(CC) ./$(SRC_DIR)/*.c -o ./$(BIN_DIR)/$(BIN) -lpthread
 	@echo "RUNNING"
 	@./$(BIN_DIR)/$(BIN)
 

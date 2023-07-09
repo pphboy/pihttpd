@@ -7,7 +7,17 @@
 /*
   
 */
-void start_server(int port) {
+
+static ThreadPool pool; // thread pool
+
+void start_server(int port,int threads_num, int threads_queue_size){
+
+  int i = -1;
+  // set queue size of threadpool
+  pool.queue_size = threads_queue_size;
+
+  // initialize threadpool
+  threadpool_init(&pool, threads_num);
   
   int sockfd = init_server(port);
 
@@ -26,14 +36,20 @@ void handle_conn(int sockfd) {
   while(1) {
     int connfd = accept(sockfd, (struct sockaddr *)&connaddr,(socklen_t*)&addr_len);
     printf("Handle Connfd:%d\n",connfd);
-    handle_request(connfd);
+    char buf[10];
+    sprintf(&buf,"%d",connfd);
+    threadpool_add_task(&pool,(void*)handle_request,(void*)buf);
   }
 }
 
 /*
   handle every request content of connection
 */
-void handle_request(int connfd) {
+void handle_request(void * argument) {
+
+  int connfd = atoi((char*)argument);
+
+  printf("CONNFD:%d\n",connfd);
   http_request hr;
   char req[BUF_SIZE];
   bzero(req, BUF_SIZE);

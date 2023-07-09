@@ -1,4 +1,115 @@
 #include "p_sys.h"
+
+/* 
+   intialize threadpool
+ */
+void threadpool_init(ThreadPool* pool, int threads_num) {
+  int i;
+  pool->thread_count = 0;
+  pool->head = pool->tail = pool->current_count = 0;
+  pool->started  = pool->shutdown = 0;
+
+  // intialize mutex and conndition
+  pthread_mutex_init(&(pool->lock), NULL);
+  pthread_cond_init(&(pool->notify),NULL);
+
+  pool->threads = (pthread_t*) malloc(sizeof(pthread_t)* threads_num);
+  pool->queue = (Task*) malloc(sizeof(Task) * pool->queue_size);
+  
+  if(pool->threads == NULL){
+    error_exit("SYSTEM INTIALIZE FAILED");
+  }
+
+  for(i = 0; i < threads_num; i++) {
+
+    pthread_create(&(pool->threads[i]), NULL, threadpool_worker, (void*)pool);
+    pool->thread_count++;
+    pool->started++;
+  }
+  
+}
+
+int threadpool_add_task(ThreadPool* pool,void (*function)(void*), void* argument) {
+  pthread_mutex_lock(&(pool->lock)); // locked mutex
+
+  printf("POOL FUNC\n");
+  // queue is full, and waiting
+  while(pool->current_count == pool->queue_size && !pool->shutdown) {
+    pthread_cond_wait(&(pool->notify), &(pool->lock));
+  }
+  printf("POOL FUNC1\n");
+  // if set shutdown, must unlocked
+  if(pool->shutdown) {
+    pthread_mutex_unlock(&(pool->lock));
+    return -1;
+  }
+
+
+
+
+  printf("POOL FUNC2 pool->tail[%d] pool->queue_size[%d]\n",pool->tail,pool->queue_size);
+
+    // 添加任务到队列
+  pool->queue[pool->tail].function = function;
+  pool->queue[pool->tail].argument = argument;
+  
+
+  printf("POOL FUNC3\n");
+  
+  pool->tail = (pool->tail + 1) % pool->queue_size;
+  pool->current_count++;
+
+
+
+  // rouse one thread
+  pthread_cond_signal(&(pool->notify));
+
+  // unlock
+  pthread_mutex_unlock(&(pool->lock));
+    
+  return 0;
+}
+
+void * threadpool_worker(void * threadpool) {
+  ThreadPool* pool = (ThreadPool*) threadpool;
+
+  while(1) {
+    // locked
+    pthread_mutex_lock(&(pool->lock));
+
+    while (pool->current_count == 0 && !pool->shutdown) {
+      pthread_cond_wait(&(pool->notify),&(pool->lock));
+    }
+
+    // close thread pool
+    if(pool->shutdown) {
+      pthread_mutex_unlock(&(pool->lock));
+      pthread_exit(NULL);
+    }
+
+    printf("TAKE_TASK\n");
+    // take task
+    void (*function)(void*) = pool->queue[pool->head].function;
+    void* argument = pool->queue[pool->head].argument;
+
+    
+    pool->head = (pool->head+1) % pool->queue_size;
+    pool->current_count--;
+
+    // rouse another thread
+    pthread_cond_broadcast(&(pool->notify));
+
+    // unlock
+    pthread_mutex_unlock(&(pool->lock));
+
+    (*function)(argument);
+    
+  }
+  
+  pthread_exit(NULL);
+}
+
+
 /*
   Print Error Information , And Exit System
  */
@@ -162,6 +273,5 @@ void get_cgi_req_param(int argc, char *argv[],http_request *hr) {
     hr->content = malloc(hr->content_len);
     strcpy(hr->content, argv[6]);
   }
-
 
 }
