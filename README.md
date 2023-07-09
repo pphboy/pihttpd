@@ -2,9 +2,9 @@
 Inherited TinyHttpd, that is Tiny Http Server Plus
 
 
-- [ x ] Threadpool
-- [ x ] Dynamic cgi compile
-- [ x ] Modern Soft Engineering Architecture
+- [x] Threadpool
+- [x] Dynamic cgi compile
+- [x] Modern Soft Engineering Architecture
 
 
 
