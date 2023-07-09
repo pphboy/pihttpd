@@ -1,0 +1,75 @@
+#ifndef P_HTTP_H
+#define P_HTTP_H
+
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+
+#endif
+
+/*
+ data structure or method of the server system
+*/
+
+typedef struct  {
+  int connfd; // connection file descriptor
+  char method[10];
+  char path[256];
+  char req_param[1024]; // after '?'
+  char content_type[64];
+  int content_len;
+  char *content;
+} http_request;
+
+
+// http method, http status
+
+// Reponse http status
+static char HTTP_OK[] =  "HTTP/1.0 200 OK\r\n";
+static char HTTP_NOT_FOUND[] =  "HTTP/1.0 404 NOT FOUND\r\n";
+static char HTTP_NOT_PROCESSED[] =  "HTTP/1.0 500 NOT PROCESSED\r\n";
+
+// error content
+static char STR_NOT_FOUND[] = "<html><head><title>404 Not Found</title></head><body><center><h1>404 Not Found</h1></center><hr><center>PHttpD</center></body></html>";
+
+static char STR_NOT_PROCESSED[] = "<html><head><title>500 NOT PROCESSED</title></head><body><center><h1>500 NOT PROCESSED</h1></center><hr><center>PHttpD</center></body></html>";
+
+
+// Server Information
+static char SERVER_INFO[] =  "Server: PiHTTPD 0.1\r\n";
+
+// Content-Type
+static char CTYPE_HTML[] = "Content-Type: text/html\r\n";
+static char CTYPE_JSON[] = "Content-Type: application/json\r\n";
+
+static char CRLF[] = "\r\n";
+
+
+void headers(int connfd,char *http_status);
+
+void add_header_value(int conn, char* type);
+
+void add_content(int connfd,char *hr);
+
+void send_error(int connfd, int http_status);
+
+/* 
+   service for cgi running
+ */
+void cgi_headers(char *http_status);
+
+void cgi_add_header_value(char* type);
+
+void cgi_add_content(char *hr);
+
+void cgi_send_error(int http_status);
+
+void cgi_send_json(int http_status, char* content);
+
+void cgi_send_html(int http_status, char* content);
+
+//void cgi_send_file(int http_status, char* content);
