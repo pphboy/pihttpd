@@ -48,8 +48,11 @@ void handle_conn(int sockfd) {
 void handle_request(void * argument) {
 
   int connfd = atoi((char*)argument);
+  char time[50];
+  get_sys_time(&time);
+  // print the handle time
+  printf("-----------------\n\t\t\t\t\tSYSTEM_TIME:%s\n\t\t\t\t\tCONNFD:%d\n------------------\n",time,connfd);
 
-  printf("CONNFD:%d\n",connfd);
   
   http_request hr;
   char req[BUF_SIZE];

@@ -314,3 +314,13 @@ char* map_get(STR_MAP* map, char *key) {
 
   return NULL;
 }
+/* 
+   get localtime of system
+ */
+void get_sys_time(char *timep) {
+  time_t current_time = time(NULL);
+  struct tm * local_time = localtime(&current_time);
+  char timestr[50];
+  strftime(timestr,sizeof(timestr),"%Y-%m-%d %H:%M:%S",local_time);
+  strcpy(timep,timestr);
+}

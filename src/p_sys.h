@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <time.h>
 #include "p_http.h"
 
 #endif
@@ -56,6 +57,8 @@ void run_cgi(http_request *hr);
 void get_cgi_req_param(int argc, char *argv[],http_request *hr);
 
 char* map_get(STR_MAP* map, char *key);
+
+void get_sys_time(char* time);
 
 // void map_set(STR* map,char* key, char* value);
 
