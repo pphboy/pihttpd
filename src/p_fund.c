@@ -37,7 +37,7 @@ void handle_conn(int sockfd) {
     int connfd = accept(sockfd, (struct sockaddr *)&connaddr,(socklen_t*)&addr_len);
     printf("Handle Connfd:%d\n",connfd);
     char buf[10];
-    sprintf(&buf,"%d",connfd);
+    sprintf((char*)&buf,"%d",connfd);
     threadpool_add_task(&pool,(void*)handle_request,(void*)buf);
   }
 }
@@ -50,11 +50,11 @@ void handle_request(void * argument) {
   int connfd = atoi((char*)argument);
 
   printf("CONNFD:%d\n",connfd);
+  
   http_request hr;
   char req[BUF_SIZE];
   bzero(req, BUF_SIZE);
   bzero(&hr, sizeof(hr));
-
   
   // set fd into hr.connfd
   hr.connfd = connfd; // CRAZY!!!
@@ -86,9 +86,9 @@ void handle_request(void * argument) {
     // this method had close(connfd) operation
     // hr attached connfd
     run_cgi(&hr);
+    
   } else {
 
-  
     printf("[STATIC_FILE]\n");
     send_static_file(&hr);    // return static file    
   }
@@ -104,7 +104,6 @@ int is_cgi(char *path) {
 }
 
 
-
 /*
   analyze request data into http_request struct
  */
@@ -112,7 +111,7 @@ void get_info_from_conn(int connfd, http_request *hr,char *req){
   int recv_len = recv(connfd, req, BUF_SIZE, 0);
   int i,j;
   printf("Recv Length:%d\n",recv_len);
-  printf("Request Info:\n%s",req);
+  //printf("Request Info:\n%s",req);
 
   // first loop , get method
   for(i = 0;i < recv_len && req[i] != ' ';i++) {
@@ -179,7 +178,8 @@ void set_content_info(http_request *hr,char *reqdata) {
   // file dont implemented
   printf("POST_DATA\n");
 
-  printf("%s\n",reqdata);
+  // print request data
+  //  printf("%s\n",reqdata);
   
   // just in upload file and POST method that  we need get all of content
   if(strcmp("POST",hr->method) == 0) {

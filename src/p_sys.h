@@ -41,16 +41,21 @@ int threadpool_add_task(ThreadPool* pool,void (*function)(void*), void *argument
 
 void * threadpool_worker(void * threadpool);
 
-
-
 void error_exit(char *msg);
 
 void display_http(http_request *hr);
 
 void send_static_file(http_request *hr);
 
+void add_http_file_type(http_request *hr);
+
+char* get_postfix_from_path(char *path); 
+
 void run_cgi(http_request *hr);
 
 void get_cgi_req_param(int argc, char *argv[],http_request *hr);
 
+char* map_get(STR_MAP* map, char *key);
+
+// void map_set(STR* map,char* key, char* value);
 

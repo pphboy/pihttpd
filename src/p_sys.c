@@ -44,22 +44,16 @@ int threadpool_add_task(ThreadPool* pool,void (*function)(void*), void* argument
     return -1;
   }
 
-
-
-
   printf("POOL FUNC2 pool->tail[%d] pool->queue_size[%d]\n",pool->tail,pool->queue_size);
 
     // 添加任务到队列
   pool->queue[pool->tail].function = function;
   pool->queue[pool->tail].argument = argument;
-  
 
   printf("POOL FUNC3\n");
   
   pool->tail = (pool->tail + 1) % pool->queue_size;
   pool->current_count++;
-
-
 
   // rouse one thread
   pthread_cond_signal(&(pool->notify));
@@ -91,7 +85,6 @@ void * threadpool_worker(void * threadpool) {
     // take task
     void (*function)(void*) = pool->queue[pool->head].function;
     void* argument = pool->queue[pool->head].argument;
-
     
     pool->head = (pool->head+1) % pool->queue_size;
     pool->current_count--;
@@ -137,10 +130,13 @@ void send_static_file(http_request *hr) {
   int connfd = hr->connfd;
   
   headers(connfd, HTTP_OK);
+  
   // check file type
-  add_header_value(connfd,CTYPE_HTML);
+  //  add_header_value(connfd,CTYPE_HTML);
+  add_http_file_type(hr);
   add_header_value(connfd,"\r\n");
-
+  printf("%s\n",hr->path+1);
+  
   int staticfd = open(hr->path+1, O_RDONLY);
   printf("staticfd: %d\n",staticfd);
   if(staticfd > 0){
@@ -163,6 +159,34 @@ void send_static_file(http_request *hr) {
   }
 }
 
+/* 
+   file postfix of hr->path
+  set the http file type
+ */
+void add_http_file_type(http_request *hr) {
+
+  char* postfix = get_postfix_from_path(hr->path)+1;
+  char* content_type = map_get((STR_MAP*)&CONTENT_TYPE_ARR,postfix);
+  
+  printf("POSTFIX: %s %d\nMAP_GET:%s\n",postfix,strcmp(postfix,".html"),content_type);
+
+  if(content_type == NULL){
+    content_type =  map_get((STR_MAP*)&CONTENT_TYPE_ARR,"file");
+  }
+
+  printf("ADD_HEADER_VALUE %s \n",content_type);
+
+  add_header_value(hr->connfd, content_type);
+}
+
+/* 
+   char *strrchr(const char *s, int c);
+   The strrchr() function returns a pointer to the last  occurrence  of
+   the character c in the string s.
+ */
+char* get_postfix_from_path(char *path) {
+  return strrchr(path, '.');
+}
 
 void run_cgi(http_request *hr) {
 
@@ -274,4 +298,19 @@ void get_cgi_req_param(int argc, char *argv[],http_request *hr) {
     strcpy(hr->content, argv[6]);
   }
 
+}
+
+/* 
+  get value from STR_MAP
+ */
+char* map_get(STR_MAP* map, char *key) {
+  int i = 0;
+  
+  for(; map[i].key != NULL;i++) {
+    if(strcmp(key,map[i].key) == 0){
+      return map[i].value;
+    }
+  }
+
+  return NULL;
 }

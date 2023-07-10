@@ -42,12 +42,42 @@ static char STR_NOT_PROCESSED[] = "<html><head><title>500 NOT PROCESSED</title><
 // Server Information
 static char SERVER_INFO[] =  "Server: PiHTTPD 0.1\r\n";
 
+typedef struct {
+  char *key; //profix
+  char *value;
+} STR_MAP;
+
+/* key is postfix, value is ContentType Value */
+static STR_MAP CONTENT_TYPE_ARR[] = {
+  {"html","Content-Type: text/html\r\n"},
+  {"xml","Content-Type: text/xml\r\n"},
+  {"txt","Content-Type: text/plain\r\n"},
+  {"css","Content-Type: text/css\r\n"},
+  {"js","Content-Type: text/javascript\r\n"},
+  {"png","Content-Type: image/png\r\n"},
+  {"jpg","Content-Type: image/jpeg\r\n"},
+  {"gif","Content-Type: image/gif\r\n"},
+  {"json","Content-Type: application/json\r\n"},
+  {"pdf","Content-Type: application/pdf\r\n"},
+  {"file","Content-Type: application/octet-stream\r\n"},
+  {NULL,NULL}
+};
+
 // Content-Type
+/* text */
 static char CTYPE_HTML[] = "Content-Type: text/html\r\n";
+static char CTYPE_XML[] =  "Content-Type: text/xml\r\n";
+static char CTYPE_TEXT[] = "Content-Type: text/plain\r\n";
+static char CTYPE_CSS[] =  "Content-Type: text/css\r\n";
+static char CTYPE_JS[] =   "Content-Type: text/javascript\r\n";
+static char CTYPE_PNG[] =  "Content-Type: image/png\r\n";
+static char CTYPE_JPG[] =  "Content-Type: image/jpeg\r\n";
+static char CTYPE_GIF[] =  "Content-Type: image/gif\r\n";
 static char CTYPE_JSON[] = "Content-Type: application/json\r\n";
+static char CTYPE_PDF[] =  "Content-Type: application/pdf\r\n";
+static char CTYPE_OCTET[] ="Content-Type: application/octet-stream\r\n";
 
 static char CRLF[] = "\r\n";
-
 
 void headers(int connfd,char *http_status);
 
