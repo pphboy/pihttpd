@@ -11,6 +11,16 @@
 
 #endif
 
+/* 
+   if request is uplaoding file, need create a multipart_form structure
+ */
+typedef struct {
+  char* filename;
+  char* disposition;
+  int finished;                     /* Finished 0, Unfinished 1 */
+} multipart_form;
+
+
 /*
  data structure or method of the server system
 */
@@ -20,10 +30,12 @@ typedef struct  {
   char method[10];
   char path[256];
   char req_param[1024]; // after '?'
-  char content_type[64];
+  char content_type[128];
+  multipart_form *form;
   int content_len;
   char *content;
 } http_request;
+
 
 
 // http method, http status

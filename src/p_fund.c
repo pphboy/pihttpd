@@ -113,7 +113,8 @@ void get_info_from_conn(int connfd, http_request *hr,char *req){
   int recv_len = recv(connfd, req, BUF_SIZE, 0);
   int i,j;
   printf("Recv Length:%d\n",recv_len);
-  //printf("Request Info:\n%s",req);
+  printf("Request Info START ======================\n\n%s",req);
+  printf("Request Info END ======================\n");
 
   // first loop , get method
   for(i = 0;i < recv_len && req[i] != ' ';i++) {
@@ -135,15 +136,15 @@ void get_info_from_conn(int connfd, http_request *hr,char *req){
   // we can get the path,method,and content-length in data between 0 and 1024
   // after '\r\n\r\n' all the content body 
 
-
 }
 
 char *CONTENT_LENGTH =  "Content-Length";
 char* CONTENT_TYPE =  "Content-Type";
+char* CONTENT_DISPOSITION = "Content-Disposition";
 
 void set_content_info(http_request *hr,char *reqdata) {
   
-  printf("\nSET_CONTENT_INFO\n");
+  printf("CONTENT_INFO\n");
 
   int i,j;
   char *line;
@@ -153,21 +154,21 @@ void set_content_info(http_request *hr,char *reqdata) {
   bzero((char*)&req,sizeof(req));
   strcpy((char*)&req,reqdata);
   
-  
-  line = strtok_r(req, "\r\n", &saveptr);
+    line = strtok_r(req, "\r\n", &saveptr);
+
   
   while(line != NULL) {
     //    printf("%s\n",line);
 
     tmp2 = strtok_r(line,": ",&tmp);
     tmp+=1; // cause value has an extra space byte
-    
-    if(strcmp(CONTENT_TYPE,tmp2) == 0) {
+
+    if(strlen(hr->content_type) == 0 && strcmp(CONTENT_TYPE,tmp2) == 0) {
       strcpy(hr->content_type,tmp);
       //      printf("%s\n",hr->content_type);
     }
 
-    if(strcmp(CONTENT_LENGTH,tmp2) == 0) {
+    if(strcmp(CONTENT_LENGTH,tmp2) == 0 ) {
       hr->content_len = atoi(tmp);
       //      printf("%s\nlen:%d\n",tmp,hr->content_len);
     }
@@ -184,21 +185,168 @@ void set_content_info(http_request *hr,char *reqdata) {
   //  printf("%s\n",reqdata);
   
   // just in upload file and POST method that  we need get all of content
+
   if(strcmp("POST",hr->method) == 0) {
-    
-    char *body_start = strstr(reqdata,"\r\n\r\n");
-    body_start+=4;
-    //    printf("BODY:%s\nLEN:%d\n",body_start,strlen(body_start));
-    
-    hr->content = malloc(hr->content_len);
-    
-    strcpy(hr->content, body_start);
-    
+    set_http_content(hr, reqdata);
   }
 
   printf("SET_ END \n");
 
 }
+
+/* set content of http_request */
+void set_http_content(http_request *hr,char *buf) {
+  // create content memory space 
+  hr->content = (char*)malloc(1024);
+    
+  if(is_file_upload(hr) == 0) {
+    printf("FILE UPLOAD \n");
+
+    // create form memory
+    hr->form = (multipart_form*)(malloc(sizeof(multipart_form)));
+    
+    set_file_content(hr, buf);
+  }else {
+    char *body_start = strstr(buf,"\r\n\r\n");
+    body_start+=4;
+    
+    strcpy(hr->content, body_start);
+  }  
+}
+
+/* 
+   get file content of previous http_request before 1024 bytes size
+ */
+void set_file_content(http_request *hr,char *buf) {
+  int i, len, d_ok, start_ok, size;
+  char* boundary = strstr(hr->content_type,"boundary=")+9;
+  
+  if(strlen(boundary) <= 0) {
+    error_exit("BOUNDARY ERROR");
+  }
+  
+  printf("Boundary: %s[%d]\n",boundary,strlen(boundary));
+  
+  int boundary_status = 0;
+  char tmp_buf[1024];
+  char *line,*rest,*tmp,*tmp2;
+  bzero(&tmp_buf,sizeof(tmp_buf));
+  
+  strcpy((char *)&tmp_buf,buf);
+  printf("TEMP_BUF_LEN:%d\n",strlen(tmp_buf));
+
+  i = 0;
+  
+  line = strtok_r(tmp_buf, "\r\n",&rest);
+  //  printf("[%d,i=%d]FILE_LINE: %s\n",strlen(line),i,line);
+
+  d_ok = 1;
+  start_ok = 1;
+  for(i = strlen(line); i < strlen(buf); ) {
+    line = strtok_r(NULL, "\r\n",&rest);
+    if(line == NULL) break;
+
+    i+=strlen(line);
+    printf("[%d,i=%d]FILE_LINE: %s\n",strlen(line),i,line);
+  
+    // write into content
+    //    strcmp(boundary,);
+
+    // start
+    printf("STRCMP:%d\n",strcmp(line,boundary));
+    if(strstr(line, boundary) != NULL && strlen(line) == (strlen(boundary) + 2)) {
+      printf("CONTENT_START\n");
+      start_ok = 0;
+      hr->form->finished = 1;
+      bzero(hr->content,1024);
+      continue;
+      // set write content start status
+    }
+
+    // end
+    // if line can find boundary, that is the end
+    // end boundary just two more bytes "--"
+    // if no bounadry, dont need to resolve
+    if(strstr(line, boundary) != NULL && strlen(line) == (strlen(boundary) + 4)) {
+      // break, and over
+      start_ok = 1;
+      hr->form->finished = 0;// cause we maybe cant finished in here
+      printf("CONTENT_END\n");
+      printf("CONTENT:\n%s\n",hr->content);
+      break;
+    }
+
+    // start_ok = 0 , start write content
+    if(!start_ok && strstr(line, CONTENT_TYPE) == NULL && strstr(line,CONTENT_DISPOSITION ) == NULL) {
+      char *t = hr->content;
+      size = strlen(hr->content)+strlen(line)+64;
+      
+      hr->content = (char*)malloc(size);
+      bzero(hr->content,size);
+      strcat(hr->content,t);
+      strcat(hr->content,line);
+      //      strcat(hr->content,"\n");
+
+      free(t);
+
+    }
+      
+    // set disposition
+    // use d_ok reduce determine order    
+    if(d_ok) {
+      tmp2 = strtok_r(line,": ",&tmp);
+      tmp+=1; // cause value has an extra space byte
+    }
+    
+    // use d_ok reduce determine order    
+    if(d_ok && strcmp(CONTENT_DISPOSITION,tmp2) == 0) {
+      //      printf("%s\n",hr->content_type);
+
+      // create momery
+      len = strlen(tmp);
+
+      //      printf("LEN: %d\n",len);
+      
+      hr->form->disposition = (char*)malloc(len);
+      strcpy(hr->form->disposition,tmp);
+
+      char *start = strstr(hr->form->disposition, "name=\"");
+      //      printf("FILENAME:%s[%d]\n",start,sizeof(start));
+
+      start += strlen("name=\"");
+      char *end = strstr(start, "\"");
+
+      //      printf("Length:%d\n",end - start);
+
+      hr->form->filename = (char *)malloc(end - start);
+
+      // start is char pointer, you can get string with this pointer
+      strncpy(hr->form->filename, start, end -start);
+      // printf("FILENAME:%s[%d]\n",hr->form->filename,end - start);
+      
+      display_multipart_form(hr->form);
+      
+      // get file name
+      
+      d_ok = 0;
+    }
+    
+  }
+  
+  printf("--------------SET_FILE_CONTENT_END\n");
+  
+}
+
+
+int is_file_upload(http_request *hr){
+  char* len = strstr(hr->content_type,MULTIPART_FORM_DATA);
+  
+  printf("FILE STATUS: %d[%s]\n",len,len);
+
+  return len == NULL ? 1 : 0;
+}
+
+
 
 /*
   split path and request param

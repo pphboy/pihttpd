@@ -14,6 +14,10 @@
 #include "p_sys.h"
 
 #endif // P_SYS_H
+
+static char * MULTIPART_FORM_DATA = "multipart/form-data;";
+
+
 void start_server(int port,int threads_num, int threads_queue_size); 
 
 void handle_conn(int sockfd);
@@ -35,3 +39,8 @@ void PrintServerInfo(int port);
 
 int is_cgi(char *path);
 
+int is_file_upload(http_request *hr);
+
+void set_http_content(http_request *hr,char *buf);
+
+void set_file_content(http_request *hr,char *buf);

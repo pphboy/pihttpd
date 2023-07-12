@@ -102,7 +102,6 @@ void * threadpool_worker(void * threadpool) {
   pthread_exit(NULL);
 }
 
-
 /*
   Print Error Information , And Exit System
  */
@@ -119,6 +118,7 @@ void display_http(http_request *hr) {
   printf("REQ_PARAM: %s\n",hr->req_param);
   printf("CONTENT_TYPE: %s\n",hr->content_type);
   printf("CONTENT_LEGNTH: %d\n",hr->content_len);
+  //  printf("CONTENT_DISPOSITION: %s\n",hr->disposition);
   printf("CONTENT: %s\n\n",hr->content);
 }
 
@@ -189,11 +189,11 @@ char* get_postfix_from_path(char *path) {
 }
 
 void run_cgi(http_request *hr) {
-
   printf("RUN_CGI: %s\n",hr->path+1);
   // using child process execute cgi program
   int pid = -1,status = -1;
   int in_pipe[2],out_pipe[2];
+  int len;
 
     
   if(pipe(in_pipe) == -1) {
@@ -212,8 +212,6 @@ void run_cgi(http_request *hr) {
   if(pid == 0) {
     char a[10],b[10];
     printf("CHILD RUN_CGI: %s\n",hr->path+1);
-    printf("SEND CONNFD:%s\n",a);
-    printf("SEND CONTENT_LENGTH:%s\n",b);
     printf("PATH:%s\n",hr->path+1);
 
     close(in_pipe[1]);
@@ -225,15 +223,31 @@ void run_cgi(http_request *hr) {
     sprintf((char*)&a,"%d",hr->connfd);
     sprintf((char*)&b,"%d",hr->content_len);
   
-    int i =  execl(hr->path+1,
-                   a,
-                   hr->method,
-                   hr->path,
-                   hr->req_param,
-                   hr->content_type,
-                   b,
-                   hr->content
-                   ,NULL);
+    int i = -1;
+    // no upload file
+    if(hr->form == NULL ) {
+      i =  execl(hr->path+1,
+                     a,
+                     hr->method,
+                     hr->path,
+                     hr->req_param,
+                     hr->content_type,
+                     b,
+                     hr->content
+                     ,NULL);      
+    } else {
+      // upload file
+      i =  execl(hr->path+1,
+                     a,
+                     hr->method,
+                     hr->path,
+                     hr->req_param,
+                     hr->content_type,
+                     b,
+                     hr->content,
+                     hr->form->filename
+                     ,NULL);      
+    }
 
     printf("STATUS:%d\n",i);
     if(i == -1) perror("EXE");
@@ -244,16 +258,24 @@ void run_cgi(http_request *hr) {
     close(out_pipe[1]);
 
     char buf[1024] = "abc";
-    // send into file
-    // write(in_pipe[1],&buf,sizeof(buf));
+
+    if(hr->form != NULL) {
+      send_recv_to_cgi(hr, in_pipe[1]);
+    } else {
+      write(in_pipe[1],hr->content, strlen(hr->content));
+    }
+
+    display_multipart_form(hr->form);
+
     
-    int len = 1;
-    
+    len = 1;
     while(len > 0){
+      
       bzero(&buf,sizeof(buf));
       // zero is stdout
       // one is stdin
       len = read(out_pipe[0], &buf, sizeof(buf));
+      
       write(hr->connfd, &buf, len);
       // send info to connfd
       // the decide send what by child process
@@ -275,6 +297,55 @@ void run_cgi(http_request *hr) {
     
 }
 
+/* 
+
+   take all of content, send to cgi process
+ */
+void send_recv_to_cgi(http_request *hr, int pipefd) {
+  printf("SEND_RECV_TO_CGI_START123\n");
+
+  display_multipart_form(hr->form);
+  
+  // write content of hr pointer into pipefd
+
+  // send into file
+  // write(in_pipe[1],&buf,sizeof(buf));
+  // 1 explained unfnished
+  if(strcmp(hr->method, "POST") == 0 && hr->form != NULL ){
+    char buf[1024];
+    int len = -1;
+
+    write(pipefd,hr->content, strlen(hr->content));
+
+    printf("FINISHED:%d\n",hr->form->finished);
+    perror("FINISH");
+        
+    if(hr->form->finished == 1 ) {
+      len = 1024;
+
+      // if size not equal 1024 , must be in end
+      while(len == 1024) {
+          
+        len = recv(hr->connfd, &buf, sizeof(buf), 0);
+        perror("SBCe");
+        printf("RECV_BUF:%s\n",buf);
+
+        // determine boundary end
+        //
+        // int status = get_boudary_end(buf);
+        // 
+        write(pipefd,&buf,len);
+      }
+      // success
+      hr->form->finished = 0;
+    }
+    
+    // over , and set upload finished
+    hr->form->finished = 0;
+  }
+
+  printf("SEND_RECV_TO_CGI_END\n");
+}
 
 void get_cgi_req_param(int argc, char *argv[],http_request *hr) {
 
@@ -323,4 +394,19 @@ void get_sys_time(char *timep) {
   char timestr[50];
   strftime(timestr,sizeof(timestr),"%Y-%m-%d %H:%M:%S",local_time);
   strcpy(timep,timestr);
+}
+
+/* 
+typedef struct {
+  char* filename;
+  char* disposition;
+  int finished;
+} multipart_form;
+ */
+void display_multipart_form(multipart_form *mf) {
+  printf("**********MULTIPART_FORM_START*********\n");
+  printf("FILENAME:\t\t%s\n", mf->filename);
+  printf("DISPOSITION:\t\t%s\n",mf->disposition);
+  printf("FINISHED:\t\t%d\n",mf->finished);
+  printf("***********MULTIPART_FORM_END*********\n");
 }

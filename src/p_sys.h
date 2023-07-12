@@ -46,6 +46,9 @@ void error_exit(char *msg);
 
 void display_http(http_request *hr);
 
+
+void display_multipart_form(multipart_form *mf);
+
 void send_static_file(http_request *hr);
 
 void add_http_file_type(http_request *hr);
@@ -62,3 +65,4 @@ void get_sys_time(char* time);
 
 // void map_set(STR* map,char* key, char* value);
 
+void send_recv_to_cgi(http_request *hr, int pipefd);
