@@ -49,10 +49,9 @@ void handle_request(void * argument) {
 
   int connfd = atoi((char*)argument);
   char time[50];
-  get_sys_time(&time);
+  get_sys_time((char*)&time);
   // print the handle time
   printf("-----------------\n\t\t\t\t\tSYSTEM_TIME:%s\n\t\t\t\t\tCONNFD:%d\n------------------\n",time,connfd);
-
   
   http_request hr;
   char req[BUF_SIZE];
