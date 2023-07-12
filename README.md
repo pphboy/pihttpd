@@ -10,5 +10,4 @@ Inherited TinyHttpd, that is Tiny Http Server Plus
 
 
 
-![Made With Emacs](https://raw.githubusercontent.com/pphboy/pihttpd/main/emacs.jpg)
-
+<center>![Made With Emacs](https://raw.githubusercontent.com/pphboy/pihttpd/main/emacs.jpg)</center>
