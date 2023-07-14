@@ -304,7 +304,7 @@ void set_file_content(http_request *hr,char *buf) {
       /* char *t = hr->content; */
       /* size = strlen(hr->content)+strlen(line)+64; */
       
-      /* hr->content = (char*)malloc(size); */
+
       /* bzero(hr->content,size); */
 
       //      strcat(hr->content,t);
