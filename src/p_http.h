@@ -17,6 +17,7 @@
 typedef struct {
   char* filename;
   char* disposition;
+  char* boundary;
   int finished;                     /* Finished 0, Unfinished 1 */
 } multipart_form;
 

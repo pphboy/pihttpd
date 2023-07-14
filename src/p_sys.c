@@ -224,8 +224,9 @@ void run_cgi(http_request *hr) {
     sprintf((char*)&b,"%d",hr->content_len);
   
     int i = -1;
-    // no upload file
+
     if(hr->form == NULL ) {
+
       i =  execl(hr->path+1,
                      a,
                      hr->method,
@@ -236,6 +237,7 @@ void run_cgi(http_request *hr) {
                      hr->content
                      ,NULL);      
     } else {
+
       // upload file
       i =  execl(hr->path+1,
                      a,
@@ -315,7 +317,12 @@ void send_recv_to_cgi(http_request *hr, int pipefd) {
     char buf[1024];
     int len = -1;
 
-    write(pipefd,hr->content, strlen(hr->content));
+    printf("CONTENT_WRITE:%s\n",hr->content);
+
+    show_bytes_line_feed(hr->content);
+
+    // why substract one number, because it will write '\0' that the end byte into stream, and file will be inserted extra byte '^D' 
+    write(pipefd,hr->content, strlen(hr->content) -1 );
 
     printf("FINISHED:%d\n",hr->form->finished);
     perror("FINISH");
@@ -325,14 +332,35 @@ void send_recv_to_cgi(http_request *hr, int pipefd) {
 
       // if size not equal 1024 , must be in end
       while(len == 1024) {
-          
+        bzero(&buf, sizeof(buf));
+        
         len = recv(hr->connfd, &buf, sizeof(buf), 0);
         perror("SBCe");
-        printf("RECV_BUF:%s\n",buf);
+        printf("RECV_BUF[%d]:%s\n",len,buf);
 
-        // determine boundary end
-        //
-        // int status = get_boudary_end(buf);
+        show_bytes_line_feed(buf);
+        
+        if(len < 1024 && get_boundary_end(hr,buf) == 0) {
+          // determine boundary end
+          // delete boundary str
+          char *start = (char*)&buf;
+          int clen = strlen(buf) - strlen(hr->form->boundary) - strlen("----") - strlen("\r\n\r\n");
+          
+          char *bb = (char*)malloc(clen);
+          
+          bzero(bb, clen);
+          
+          strncpy(bb,start,clen);
+
+          write(pipefd,bb,clen);
+                    
+          printf("bb BUF CONTENT:%s\n123\n BUF[%d] [%d]\n",bb, strlen(bb), clen);
+          printf("BUF_+_+_+_+_=OVER\n");
+
+          // out writing
+          break;
+        }
+
         // 
         write(pipefd,&buf,len);
       }
@@ -407,6 +435,42 @@ void display_multipart_form(multipart_form *mf) {
   printf("**********MULTIPART_FORM_START*********\n");
   printf("FILENAME:\t\t%s\n", mf->filename);
   printf("DISPOSITION:\t\t%s\n",mf->disposition);
+  printf("BOUNDARY:\t\t%s\n",mf->boundary);
   printf("FINISHED:\t\t%d\n",mf->finished);
   printf("***********MULTIPART_FORM_END*********\n");
+}
+
+void show_bytes_line_feed(char *buf) {
+  printf("---SHOW_BUF----START\n");
+  int i = 0;
+  for(; i < strlen(buf);i++) {
+    if(buf[i] == '\n') {
+      printf("\\n");
+    } else if(buf[i] == '\r') {
+      printf("\\r");
+    } else if(buf[i] == '\0') {
+      printf("\\0");
+    }else {
+      printf("%c",buf[i]);      
+    }
+
+  }
+  printf("---SHOW_BUF----END\n");
+}
+
+/* 
+
+   Finded 0
+   Not Found 1
+
+ */
+int get_boundary_end(http_request *hr,char *buf){
+  char* end = strstr(hr->form->boundary,buf);
+  printf("GET_BOUNDARY_END:%s\n",hr->form->boundary);
+  
+  if(end != NULL) {
+    return 1;
+  }else {
+    return 0;
+  }
 }

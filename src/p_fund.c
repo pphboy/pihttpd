@@ -220,7 +220,14 @@ void set_http_content(http_request *hr,char *buf) {
 void set_file_content(http_request *hr,char *buf) {
   int i, len, d_ok, start_ok, size;
   char* boundary = strstr(hr->content_type,"boundary=")+9;
+
+
+  printf("boundary___len:%d\n",strlen(boundary));
   
+  hr->form->boundary = (char*) malloc(128);
+
+  strcpy(hr->form->boundary, boundary);
+    
   if(strlen(boundary) <= 0) {
     error_exit("BOUNDARY ERROR");
   }
@@ -230,10 +237,13 @@ void set_file_content(http_request *hr,char *buf) {
   int boundary_status = 0;
   char tmp_buf[1024];
   char *line,*rest,*tmp,*tmp2;
+  
   bzero(&tmp_buf,sizeof(tmp_buf));
   
   strcpy((char *)&tmp_buf,buf);
   printf("TEMP_BUF_LEN:%d\n",strlen(tmp_buf));
+
+  set_multipart_disposition(hr,buf);
 
   i = 0;
   
@@ -242,23 +252,36 @@ void set_file_content(http_request *hr,char *buf) {
 
   d_ok = 1;
   start_ok = 1;
+    
   for(i = strlen(line); i < strlen(buf); ) {
     line = strtok_r(NULL, "\r\n",&rest);
     if(line == NULL) break;
 
     i+=strlen(line);
     printf("[%d,i=%d]FILE_LINE: %s\n",strlen(line),i,line);
-  
-    // write into content
-    //    strcmp(boundary,);
-
+      
     // start
     printf("STRCMP:%d\n",strcmp(line,boundary));
+    
     if(strstr(line, boundary) != NULL && strlen(line) == (strlen(boundary) + 2)) {
       printf("CONTENT_START\n");
+      
       start_ok = 0;
       hr->form->finished = 1;
-      bzero(hr->content,1024);
+
+      if(hr->content_len > 1024) {
+        line = strtok_r(NULL,"\r\n",&rest);
+        line = strtok_r(NULL,"\r\n",&rest);
+        strcpy(hr->content, rest);
+
+        hr->content += strlen("\n\r\n");
+        
+        printf("CONTENT_____________________REST3:\n%s\n",hr->content);
+        
+        // ok ok
+        start_ok = 1;
+      }
+      
       continue;
       // set write content start status
     }
@@ -267,7 +290,7 @@ void set_file_content(http_request *hr,char *buf) {
     // if line can find boundary, that is the end
     // end boundary just two more bytes "--"
     // if no bounadry, dont need to resolve
-    if(strstr(line, boundary) != NULL && strlen(line) == (strlen(boundary) + 4)) {
+    if(!start_ok && strstr(line, boundary) != NULL && strlen(line) == (strlen(boundary) + 4)) {
       // break, and over
       start_ok = 1;
       hr->form->finished = 0;// cause we maybe cant finished in here
@@ -278,28 +301,47 @@ void set_file_content(http_request *hr,char *buf) {
 
     // start_ok = 0 , start write content
     if(!start_ok && strstr(line, CONTENT_TYPE) == NULL && strstr(line,CONTENT_DISPOSITION ) == NULL) {
-      char *t = hr->content;
-      size = strlen(hr->content)+strlen(line)+64;
+      /* char *t = hr->content; */
+      /* size = strlen(hr->content)+strlen(line)+64; */
       
-      hr->content = (char*)malloc(size);
-      bzero(hr->content,size);
-      strcat(hr->content,t);
+      /* hr->content = (char*)malloc(size); */
+      /* bzero(hr->content,size); */
+
+      //      strcat(hr->content,t);
+      //      strcat(hr->content,"\r\n");
       strcat(hr->content,line);
       //      strcat(hr->content,"\n");
 
-      free(t);
-
-    }
-      
-    // set disposition
-    // use d_ok reduce determine order    
-    if(d_ok) {
-      tmp2 = strtok_r(line,": ",&tmp);
-      tmp+=1; // cause value has an extra space byte
+      //      free(t);
     }
     
+  }
+  
+  printf("--------------SET_FILE_CONTENT_END\n");
+  
+}
+
+
+void set_multipart_disposition(http_request *hr, char*buf){
+  char tmp_buf[1024];int len= -1;
+  
+  
+  char *line,*rest,*tmp,*tmp2;
+  strcpy((char *)&tmp_buf,buf);
+  
+  line = strtok_r((char*)&tmp_buf, "\r\n",&rest);
+  while(1) {
+    line = strtok_r(NULL, "\r\n",&rest);
+    if(line == NULL) break;  
+    // set disposition
     // use d_ok reduce determine order    
-    if(d_ok && strcmp(CONTENT_DISPOSITION,tmp2) == 0) {
+
+    tmp2 = strtok_r(line,": ",&tmp);
+    tmp+=1; // cause value has an extra space byte
+
+    
+    // use d_ok reduce determine order    
+    if( strcmp(CONTENT_DISPOSITION,tmp2) == 0) {
       //      printf("%s\n",hr->content_type);
 
       // create momery
@@ -325,18 +367,11 @@ void set_file_content(http_request *hr,char *buf) {
       // printf("FILENAME:%s[%d]\n",hr->form->filename,end - start);
       
       display_multipart_form(hr->form);
-      
-      // get file name
-      
-      d_ok = 0;
-    }
-    
+        
+     }
   }
-  
-  printf("--------------SET_FILE_CONTENT_END\n");
-  
-}
 
+}
 
 int is_file_upload(http_request *hr){
   char* len = strstr(hr->content_type,MULTIPART_FORM_DATA);

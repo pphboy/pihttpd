@@ -44,3 +44,5 @@ int is_file_upload(http_request *hr);
 void set_http_content(http_request *hr,char *buf);
 
 void set_file_content(http_request *hr,char *buf);
+
+void set_multipart_disposition(http_request *hr, char*buf);

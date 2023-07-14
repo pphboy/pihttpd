@@ -66,3 +66,8 @@ void get_sys_time(char* time);
 // void map_set(STR* map,char* key, char* value);
 
 void send_recv_to_cgi(http_request *hr, int pipefd);
+
+void show_bytes_line_feed(char *buf);
+
+
+int get_boundary_end(http_request *hr,char *buf);

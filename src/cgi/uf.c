@@ -8,7 +8,8 @@ int main(int argc, char *argv[]) {
   http_request hr;
   get_cgi_req_param(argc,argv,&hr);
   
-  char *filename = (char*)malloc(strlen(argv[argc-1])+strlen("file/"));
+  len =  strlen(argv[argc-1])+strlen("file/");
+  char *filename = (char*)malloc(len);
 
   cgi_send_json(200,"{\"cgi\":\"test.c\"}\n");
   
@@ -16,7 +17,7 @@ int main(int argc, char *argv[]) {
   printf("FILENAME: %s\n",argv[argc-1]);
   printf("LOCAL:%s\n",filename);
     
-  int fd =  open(filename, O_WRONLY | O_CREAT, 0777);
+  int fd =  open(filename, O_WRONLY | O_CREAT, 0644);
   int w;
   
   if(fd == -1) {
@@ -31,7 +32,7 @@ int main(int argc, char *argv[]) {
   printf("CONTENT_LEN:%d\n",strlen(hr.content));
   
   
-  write(fd, hr.content, strlen(hr.content));
+  //  write(fd, hr.content, strlen(hr.content));
 
   bzero((char*)&buf,sizeof(buf));  
   if(hr.content_len > 1024) {
@@ -40,12 +41,12 @@ int main(int argc, char *argv[]) {
     len = 1024;
     while(len == 1024) {
       bzero(&buf,sizeof(buf));
-
-      perror("START 123");
       
       len = read(0, &buf, sizeof(buf));
-      perror("START 123");
+      
       printf("LEN:%d\n",len);
+
+      show_bytes_line_feed(buf);
       
       w = write(fd, &buf, len);
       if(w == -1) error_exit("WRITE ERROR");

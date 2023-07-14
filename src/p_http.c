@@ -1,7 +1,6 @@
 /*
   About Http Information, Method, Utils
  */
-
 #include "p_http.h"
 
 /* 
